@@ -102,7 +102,7 @@ use bevy::{ecs::system::ReadOnlySystemParam, prelude::*};
 /// }
 /// ```
 ///
-/// This is equivalent to manually replacing the default [`BroadPhasePlugin`] and [`NarrowPhasePlugin`]
+/// This is equivalent to manually replacing the default [`BvhBroadPhasePlugin`] and [`NarrowPhasePlugin`]
 /// with instances that have the desired hooks provided using generics.
 ///
 /// [`SystemParam`]: bevy::ecs::system::SystemParam
@@ -217,8 +217,9 @@ impl CollisionHooks for () {}
 /// ```
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Component, Hash, Clone, Copy, PartialEq, Eq, Debug, Reflect)]
-#[reflect(opaque, Hash, PartialEq, Debug)]
+#[derive(Component, Hash, Clone, Copy, Default, PartialEq, Eq, Debug, Reflect)]
+#[component(immutable)]
+#[reflect(opaque, Hash, PartialEq, Debug, Default)]
 pub struct ActiveCollisionHooks(u8);
 
 bitflags::bitflags! {

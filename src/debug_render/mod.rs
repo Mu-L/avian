@@ -7,10 +7,12 @@
 mod configuration;
 mod gizmos;
 
+use bevy_math::bounding::Aabb3d;
 pub use configuration::*;
 pub use gizmos::*;
 
 use crate::{
+    collider_tree::ColliderTrees,
     dynamics::{
         joints::EntityConstraint,
         solver::islands::{BodyIslandNode, PhysicsIslands},
@@ -40,6 +42,7 @@ use bevy::{
 /// - [`RayCaster`]
 /// - [`ShapeCaster`]
 /// - [Simulation islands](dynamics::solver::islands)
+/// - [Collider tree](crate::collider_tree) nodes
 /// - Changing the visibility of entities to only show debug rendering
 ///
 /// By default, [AABBs](ColliderAabb) and [contacts](ContactPair) are not debug rendered.
@@ -106,6 +109,7 @@ impl Plugin for PhysicsDebugPlugin {
             (
                 debug_render_axes,
                 debug_render_aabbs,
+                debug_render_bvh,
                 #[cfg(all(
                     feature = "default-collider",
                     any(feature = "parry-f32", feature = "parry-f64")
@@ -244,6 +248,28 @@ fn debug_render_aabbs(
                 },
                 Transform::IDENTITY,
                 color,
+            );
+        }
+    }
+}
+
+fn debug_render_bvh(
+    bvh: Res<ColliderTrees>,
+    mut gizmos: Gizmos<PhysicsGizmos>,
+    store: Res<GizmoConfigStore>,
+) {
+    let config = store.config::<PhysicsGizmos>().1;
+
+    let Some(collider_tree_color) = config.collider_tree_color else {
+        return;
+    };
+
+    for node in bvh.iter_trees().flat_map(|tree| tree.bvh.nodes.iter()) {
+        if node.prim_count == 0 && node.aabb.valid() {
+            gizmos.aabb_3d(
+                Aabb3d::from_min_max(node.aabb.min.to_array(), node.aabb.max.to_array()),
+                Transform::IDENTITY,
+                collider_tree_color,
             );
         }
     }

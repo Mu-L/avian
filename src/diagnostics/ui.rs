@@ -3,6 +3,7 @@
 //!
 //! See [`PhysicsDiagnosticsPlugin`] for more information.
 
+use crate::collider_tree::ColliderTreeDiagnostics;
 use crate::dynamics::solver::constraint_graph::ConstraintGraph;
 use crate::{collision::CollisionDiagnostics, dynamics::solver::SolverDiagnostics};
 use crate::{diagnostics::*, prelude::*};
@@ -277,6 +278,15 @@ fn build_diagnostic_texts(cmd: &mut RelatedSpawnerCommands<ChildOf>) {
         .with_children(|cmd| {
             cmd.timer_texts(spatial_query_timers, AdaptiveTextSettings::new(0.0, 4.0));
         });
+
+    // Collider tree timers
+    let collider_tree_timers = vec![
+        ("Update AABBs", ColliderTreeDiagnostics::UPDATE),
+        ("Optimize Trees", ColliderTreeDiagnostics::OPTIMIZE),
+    ];
+    cmd.diagnostic_group("Collider Trees").with_children(|cmd| {
+        cmd.timer_texts(collider_tree_timers, AdaptiveTextSettings::new(0.0, 4.0));
+    });
 
     cmd.diagnostic_group("Other").with_children(|cmd| {
         cmd.timer_text(
