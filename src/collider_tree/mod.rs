@@ -22,16 +22,20 @@
 //! [`BvhBroadPhasePlugin`]: crate::collision::broad_phase::BvhBroadPhasePlugin
 
 mod diagnostics;
+mod obvhs_ext;
 mod optimization;
 mod proxy_key;
+mod traverse;
 mod tree;
 mod update;
 
 pub use diagnostics::ColliderTreeDiagnostics;
+pub use obvhs_ext::Bvh2Ext;
+pub(crate) use obvhs_ext::obvhs_ray;
 pub use optimization::{ColliderTreeOptimization, TreeOptimizationMode};
 pub use proxy_key::{ColliderTreeProxyKey, ColliderTreeType, ProxyId};
 pub use tree::{ColliderTree, ColliderTreeProxy, ColliderTreeProxyFlags, ColliderTreeWorkspace};
-pub use update::MovedProxies;
+pub use update::{MovedProxies, update_moved_collider_aabbs};
 
 use optimization::ColliderTreeOptimizationPlugin;
 use update::ColliderTreeUpdatePlugin;
