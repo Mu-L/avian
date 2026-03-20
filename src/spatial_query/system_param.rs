@@ -1022,7 +1022,16 @@ impl SpatialQuery<'_, '_> {
         self.collider_trees.iter_trees().for_each(|tree| {
             tree.point_traverse(point, |proxy_id| {
                 let proxy = tree.get_proxy(proxy_id).unwrap();
-                if filter.test(proxy.collider, proxy.layers) {
+
+                if !filter.test(proxy.collider, proxy.layers) {
+                    return true;
+                }
+
+                let Ok((position, rotation, collider)) = self.colliders.get(proxy.collider) else {
+                    return true;
+                };
+
+                if collider.contains_point(position.0, *rotation, point) {
                     callback(proxy.collider)
                 } else {
                     true
