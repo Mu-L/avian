@@ -203,36 +203,13 @@ pub struct CollisionEventSystems;
 #[cfg_attr(feature = "serialize", reflect(Serialize, Deserialize))]
 #[reflect(Debug, Resource, PartialEq)]
 pub struct NarrowPhaseConfig {
-    /// The default maximum [speculative margin](SpeculativeMargin) used for
-    /// [speculative collisions](dynamics::ccd#speculative-collision). This can be overridden
-    /// for individual entities with the [`SpeculativeMargin`] component.
-    ///
-    /// By default, the maximum speculative margin is unbounded, so contacts can be predicted
-    /// from any distance, provided that the bodies are moving fast enough. As the prediction distance
-    /// grows, the contact data becomes more and more approximate, and in rare cases, it can even cause
-    /// [issues](dynamics::ccd#caveats-of-speculative-collision) such as ghost collisions.
-    ///
-    /// By limiting the maximum speculative margin, these issues can be mitigated, at the cost
-    /// of an increased risk of tunneling. Setting it to `0.0` disables speculative collision
-    /// altogether for entities without [`SpeculativeMargin`].
-    ///
-    /// This is implicitly scaled by the [`PhysicsLengthUnit`].
-    ///
-    /// Default: `MAX` (unbounded)
-    pub default_speculative_margin: Scalar,
-
-    /// A contact tolerance that acts as a minimum bound for the [speculative margin](dynamics::ccd#speculative-collision).
-    ///
-    /// A small, positive contact tolerance helps ensure that contacts are not missed
+    /// A small, positive contact tolerance to help ensure that contacts are not missed
     /// due to numerical issues or solver jitter for objects that are in continuous
     /// contact, such as pushing against each other.
     ///
-    /// Making the contact tolerance too large will have a negative impact on performance,
-    /// as contacts will be computed even for objects that are not in close proximity.
-    ///
     /// This is implicitly scaled by the [`PhysicsLengthUnit`].
     ///
-    /// Default: `0.005`
+    /// Default: `0.02`
     pub contact_tolerance: Scalar,
 
     /// If `true`, the current contacts will be matched with the previous contacts
@@ -249,8 +226,8 @@ pub struct NarrowPhaseConfig {
 impl Default for NarrowPhaseConfig {
     fn default() -> Self {
         Self {
-            default_speculative_margin: Scalar::MAX,
-            contact_tolerance: 0.005,
+            // TODO: Investigate if this could be smaller
+            contact_tolerance: 0.02,
             match_contacts: true,
         }
     }

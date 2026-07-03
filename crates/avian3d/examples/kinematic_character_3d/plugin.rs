@@ -41,12 +41,7 @@ pub enum MovementAction {
 /// to prevent Avian from automatically applying the character's velocity to its position,
 /// since the character controller will handle movement manually using move-and-slide.
 #[derive(Component)]
-#[require(
-    RigidBody::Kinematic,
-    CustomPositionIntegration,
-    // We don't want to impart speculative collision impulses in this case
-    SpeculativeMargin(0.0)
-)]
+#[require(RigidBody::Kinematic, CustomPositionIntegration)]
 pub struct CharacterController;
 
 /// Component for configuring movement settings for a character controller.

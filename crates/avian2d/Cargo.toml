@@ -125,7 +125,18 @@ name = "kinematic_character_2d"
 required-features = ["2d", "default-collider"]
 
 [[example]]
-name = "ccd"
+name = "spinners"
+path = "examples/ccd/spinners.rs"
+required-features = ["2d", "default-collider"]
+
+[[example]]
+name = "projectile_bounce"
+path = "examples/ccd/projectile_bounce.rs"
+required-features = ["2d", "default-collider"]
+
+[[example]]
+name = "speculative_ghost"
+path = "examples/ccd/speculative_ghost.rs"
 required-features = ["2d", "default-collider"]
 
 [[example]]

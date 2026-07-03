@@ -281,8 +281,7 @@ impl From<Scalar> for Friction {
 ///   This can be caused by [friction](Friction), [damping](LinearDamping), or simulation inaccuracies.
 ///
 /// - Collisions can have more or less bounce than expected, especially when objects are moving very fast.
-///   This is largely due to the the sequential solver and [speculative collision](dynamics::ccd#speculative-collision).
-///   For more accurate restitution, consider disabling speculative collision and using [`SweptCcd`] instead.
+///   This is largely due to the the sequential solver and [continuous collision](dynamics::ccd) scheme.
 ///
 /// - An object falling flat on the ground with multiple contact points may tip over on one side or corner a bit.
 ///   This is because contact points are solved sequentially, and the order of contact points affects the result.

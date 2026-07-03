@@ -310,12 +310,6 @@ impl Rotation {
         (self.sin, self.cos)
     }
 
-    /// Rotates the given vector by `self`.
-    #[deprecated(note = "use the `Mul` impl instead, like `rot * vec`")]
-    pub fn rotate(&self, vec: Vector) -> Vector {
-        self * vec
-    }
-
     /// Computes the length or norm of the complex number used to represent the rotation.
     ///
     /// The length is typically expected to be `1.0`. Unexpectedly denormalized rotations
@@ -347,6 +341,20 @@ impl Rotation {
     #[inline]
     pub fn length_recip(self) -> Scalar {
         Vector::new(self.sin, self.cos).length_recip()
+    }
+
+    /// Computes the chord length of the rotation, which is the straight-line
+    /// distance between the start and end points of the rotation on a unit circle.
+    #[inline]
+    pub fn chord_length(self) -> Scalar {
+        // The chord length traveled by a point rotated by `θ` on a unit circle
+        // is `2 * sin(θ / 2)`.
+        //
+        // In 2D, `2 * sin(θ / 2) = sqrt(2 * (1 - cos(θ)))`, using the stored cosine.
+        //
+        // TODO: A "2D quaternion" that stores cos(theta / 2) and sin(theta / 2)
+        //       could avoid the sqrt and be more accurate in some places.
+        (2.0 * (1.0 - self.cos)).max(0.0).sqrt()
     }
 
     /// Returns `self` with a length of `1.0` if possible, and `None` otherwise.
@@ -758,6 +766,18 @@ impl Rotation {
 
     /// No rotation.
     pub const IDENTITY: Self = Self(Quaternion::IDENTITY);
+
+    /// Computes the chord length of the rotation, which is the straight-line
+    /// distance between the start and end points of the rotation on a unit circle.
+    #[inline]
+    pub fn chord_length(self) -> Scalar {
+        // The chord length traveled by a point rotated by `θ` on a unit circle
+        // is `2 * sin(θ / 2)`.
+        //
+        // In 3D, the vector part of the quaternion has length `sin(θ / 2)`,
+        // so doubling it gives the chord length `2 * sin(θ / 2)` directly.
+        2.0 * self.xyz().length()
+    }
 
     /// Returns the angle (in radians) for the minimal rotation for transforming this rotation into another.
     #[inline]

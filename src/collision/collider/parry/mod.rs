@@ -438,6 +438,24 @@ impl AnyCollider for Collider {
             manifolds,
         )
     }
+
+    fn ccd_thickness_with_context(&self, _context: ColliderContext<Self::Context>) -> Scalar {
+        self.shape_scaled().ccd_thickness()
+    }
+
+    fn max_distance_to_point_with_context(
+        &self,
+        point: Vector,
+        _context: ColliderContext<Self::Context>,
+    ) -> Scalar {
+        let bounding_sphere = self.shape_scaled().compute_local_bounding_sphere();
+        point.distance(bounding_sphere.center) + bounding_sphere.radius
+    }
+
+    fn bounding_radius_with_context(&self, _context: ColliderContext<Self::Context>) -> Scalar {
+        let center_of_mass = self.center_of_mass().adjust_precision();
+        self.max_distance_to_point(center_of_mass)
+    }
 }
 
 // TODO: `bevy_heavy` supports computing the individual mass properties efficiently for Bevy's primitive shapes,

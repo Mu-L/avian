@@ -136,8 +136,8 @@
 //! - [Lock translational and rotational axes](LockedAxes)
 //! - [Dominance]
 //! - [Continuous Collision Detection (CCD)](dynamics::ccd)
-//!     - [Speculative collision](dynamics::ccd#speculative-collision)
 //!     - [Swept CCD](dynamics::ccd#swept-ccd)
+//!     - [Speculative collision](dynamics::ccd#speculative-collision)
 //! - [`Transform` interpolation and extrapolation](PhysicsInterpolationPlugin)
 //! - [Temporarily disabling a rigid body](RigidBodyDisabled)
 //! - [Automatic deactivation with sleeping](Sleeping)
@@ -548,7 +548,7 @@ pub mod prelude {
         PhysicsPlugins,
         collider_tree::{ColliderTreeOptimization, ColliderTreePlugin, TreeOptimizationMode},
         collision::prelude::*,
-        dynamics::{self, ccd::SpeculativeMargin, prelude::*},
+        dynamics::{self, prelude::*},
         interpolation::*,
         physics_transform::{PhysicsTransformHelper, PhysicsTransformPlugin, Position, Rotation},
         schedule::{
@@ -609,6 +609,7 @@ use prelude::*;
 /// | [`JointPlugin`]                   | A plugin for managing and initializing [joints](dynamics::joints). Does *not* include the actual joint solver.                                             |
 /// | [`MassPropertyPlugin`]            | Manages mass properties of dynamic [rigid bodies](RigidBody).                                                                                              |
 /// | [`ForcePlugin`]                   | Manages and applies external forces, torques, and acceleration for rigid bodies. See the [module-level documentation](dynamics::rigid_body::forces).       |
+/// | [`BodySizeMetricsPlugin`]         | Manages [`BodySizeMetrics`] for rigid bodies, which are used for various optimizations.                                                                    |
 /// | [`SpatialQueryPlugin`]            | Handles spatial queries like [raycasting](spatial_query#raycasting) and [shapecasting](spatial_query#shapecasting).                                        |
 /// | [`PhysicsInterpolationPlugin`]    | [`Transform`] interpolation and extrapolation for rigid bodies.                                                                                            |
 /// | [`PhysicsTransformPlugin`]        | Manages physics transforms and synchronizes them with [`Transform`].                                                                                       |
@@ -717,8 +718,8 @@ impl PhysicsPlugins {
     ///
     /// Note that this is *not* used to scale forces or any other user-facing inputs or outputs.
     /// Instead, the value is only used to scale some internal length-based tolerances, such as
-    /// [`SleepingThreshold::linear`] and [`NarrowPhaseConfig::default_speculative_margin`],
-    /// as well as the scale used for [debug rendering](PhysicsDebugPlugin).
+    /// [`SleepingThreshold::linear`] and [`NarrowPhaseConfig::contact_tolerance`], as well as
+    /// the scale used for [debug rendering](PhysicsDebugPlugin).
     ///
     /// Choosing the appropriate length unit can help improve stability and robustness.
     ///
@@ -773,7 +774,8 @@ impl PluginGroup for PhysicsPlugins {
         let builder = builder
             .add(ColliderBackendPlugin::<Collider>::new(self.schedule))
             .add(ColliderTreePlugin::<Collider>::default())
-            .add(NarrowPhasePlugin::<Collider>::default());
+            .add(NarrowPhasePlugin::<Collider>::default())
+            .add(BodySizeMetricsPlugin::<Collider>::default());
 
         // Add solver plugins.
         let builder = builder.add_group(SolverPlugins::new_with_length_unit(self.length_unit));

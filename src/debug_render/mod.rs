@@ -15,7 +15,10 @@ use crate::{
     collider_tree::ColliderTrees,
     dynamics::{
         joints::EntityConstraint,
-        solver::islands::{BodyIslandNode, PhysicsIslands},
+        solver::{
+            islands::{BodyIslandNode, PhysicsIslands},
+            solver_body::{SolverBody, SolverBodyFlags},
+        },
     },
     prelude::*,
 };
@@ -289,6 +292,7 @@ fn debug_render_colliders(
         Option<&DebugRender>,
     )>,
     sleeping: Query<(), With<Sleeping>>,
+    solver_bodies: Query<&SolverBody>,
     mut gizmos: Gizmos<PhysicsGizmos>,
     store: Res<GizmoConfigStore>,
 ) {
@@ -299,8 +303,26 @@ fn debug_render_colliders(
         if let Some(mut color) = render_config.map_or(config.collider_color, |c| c.collider_color) {
             let collider_rb = collider_rb.map_or(entity, |c| c.body);
 
-            // If the body is sleeping, multiply the color by the sleeping color multiplier
-            if sleeping.contains(collider_rb) {
+            let ccd_color = (render_config.is_none())
+                .then(|| solver_bodies.get(collider_rb).ok())
+                .flatten()
+                .and_then(|solver_body| {
+                    if solver_body
+                        .flags
+                        .contains(SolverBodyFlags::HAD_TIME_OF_IMPACT)
+                    {
+                        config.time_of_impact_color
+                    } else if solver_body.flags.contains(SolverBodyFlags::IS_FAST) {
+                        config.fast_body_color
+                    } else {
+                        None
+                    }
+                });
+
+            if let Some(ccd_color) = ccd_color {
+                color = ccd_color;
+            } else if sleeping.contains(collider_rb) {
+                // If the body is sleeping, multiply the color by the sleeping color multiplier.
                 let hsla = Hsla::from(color).to_vec4();
                 if let Some(mul) = render_config.map_or(config.sleeping_color_multiplier, |c| {
                     c.sleeping_color_multiplier
@@ -308,6 +330,7 @@ fn debug_render_colliders(
                     color = Hsla::from_vec4(hsla * Vec4::from_array(mul)).into();
                 }
             }
+
             gizmos.draw_collider(collider, position, rotation, color);
         }
     }

@@ -153,6 +153,12 @@ bitflags::bitflags! {
         const IS_KINEMATIC = 1 << 6;
         /// Set if gyroscopic motion is enabled.
         const GYROSCOPIC_MOTION = 1 << 7;
+        /// Set during the continuous collision stage if the body moved fast enough
+        /// to be treated as a "fast body" and have its motion swept. Transient.
+        const IS_FAST = 1 << 8;
+        /// Set during the continuous collision stage if the body's motion was stopped
+        /// at a time of impact. Transient.
+        const HAD_TIME_OF_IMPACT = 1 << 9;
     }
 }
 
