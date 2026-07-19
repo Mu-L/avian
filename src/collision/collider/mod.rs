@@ -134,14 +134,8 @@ pub trait AnyCollider: Component<Mutability = Mutable> + ComputeMassProperties {
     /// # Example
     ///
     /// ```
-    #[cfg_attr(
-        feature = "2d",
-        doc = "# use avian2d::{prelude::*, math::{Vector, Scalar}};"
-    )]
-    #[cfg_attr(
-        feature = "3d",
-        doc = "# use avian3d::{prelude::*, math::{Vector, Scalar}};"
-    )]
+    #[cfg_attr(feature = "2d", doc = "# use avian2d::{prelude::*, math::RVector};")]
+    #[cfg_attr(feature = "3d", doc = "# use avian3d::{prelude::*, math::RVector};")]
     /// # use bevy::prelude::*;
     /// # use bevy::ecs::system::{SystemParam, lifetimeless::{SRes, SQuery}};
     /// #
@@ -175,19 +169,23 @@ pub trait AnyCollider: Component<Mutability = Mutable> + ComputeMassProperties {
     ///
     /// #   fn aabb_with_context(
     /// #       &self,
-    /// #       _: Vector,
-    /// #       _: impl Into<Rotation>,
+    /// #       _: RVector,
+    #[cfg_attr(feature = "2d", doc = "#       _: impl Into<Rot2>,")]
+    #[cfg_attr(feature = "3d", doc = "#       _: impl Into<Quat>,")]
+    /// #       _: f32,
     /// #       _: ColliderContext<Self::Context>,
     /// #   ) -> ColliderAabb { unimplemented!() }
     /// #
     ///     fn contact_manifolds_with_context(
     ///         &self,
     ///         other: &Self,
-    ///         position1: Vector,
-    ///         rotation1: impl Into<Rotation>,
-    ///         position2: Vector,
-    ///         rotation2: impl Into<Rotation>,
-    ///         prediction_distance: Scalar,
+    ///         position1: RVector,
+    #[cfg_attr(feature = "2d", doc = "        rotation1: impl Into<Rot2>,")]
+    #[cfg_attr(feature = "3d", doc = "        rotation1: impl Into<Quat>,")]
+    ///         position2: RVector,
+    #[cfg_attr(feature = "2d", doc = "        rotation2: impl Into<Rot2>,")]
+    #[cfg_attr(feature = "3d", doc = "        rotation2: impl Into<Quat>,")]
+    ///         prediction_distance: f32,
     ///         manifolds: &mut Vec<ContactManifold>,
     ///         context: ColliderPairContext<Self::Context>,
     ///     ) {
@@ -202,7 +200,7 @@ pub trait AnyCollider: Component<Mutability = Mutable> + ComputeMassProperties {
     type Context: for<'w, 's> ReadOnlySystemParam<Item<'w, 's>: Send + Sync>;
 
     /// Computes the [Axis-Aligned Bounding Box](ColliderAabb) of the collider
-    /// with the given position and rotation.
+    /// with the given position and rotation, grown by the given margin.
     ///
     /// See [`SimpleCollider::aabb`] for collider types with an empty [`AnyCollider::Context`].
     #[cfg_attr(
@@ -211,14 +209,15 @@ pub trait AnyCollider: Component<Mutability = Mutable> + ComputeMassProperties {
     )]
     fn aabb_with_context(
         &self,
-        position: Vector,
-        rotation: impl Into<Rotation>,
+        position: RVector,
+        rotation: impl Into<Rot>,
+        margin: f32,
         context: ColliderContext<Self::Context>,
     ) -> ColliderAabb;
 
-    /// Computes the swept [Axis-Aligned Bounding Box](ColliderAabb) of the collider.
-    /// This corresponds to the space the shape would occupy if it moved from the given
-    /// start position to the given end position.
+    /// Computes the swept [Axis-Aligned Bounding Box](ColliderAabb) of the collider,
+    /// grown by the given margin. This corresponds to the space the shape would occupy
+    /// if it moved from the given start position to the given end position.
     ///
     /// See [`SimpleCollider::swept_aabb`] for collider types with an empty [`AnyCollider::Context`].
     #[cfg_attr(
@@ -227,14 +226,15 @@ pub trait AnyCollider: Component<Mutability = Mutable> + ComputeMassProperties {
     )]
     fn swept_aabb_with_context(
         &self,
-        start_position: Vector,
-        start_rotation: impl Into<Rotation>,
-        end_position: Vector,
-        end_rotation: impl Into<Rotation>,
+        start_position: RVector,
+        start_rotation: impl Into<Rot>,
+        end_position: RVector,
+        end_rotation: impl Into<Rot>,
+        margin: f32,
         context: ColliderContext<Self::Context>,
     ) -> ColliderAabb {
-        self.aabb_with_context(start_position, start_rotation, context.clone())
-            .merged(self.aabb_with_context(end_position, end_rotation, context))
+        self.aabb_with_context(start_position, start_rotation, margin, context.clone())
+            .merged(self.aabb_with_context(end_position, end_rotation, margin, context))
     }
 
     /// Computes all [`ContactManifold`]s between two colliders.
@@ -246,11 +246,11 @@ pub trait AnyCollider: Component<Mutability = Mutable> + ComputeMassProperties {
     fn contact_manifolds_with_context(
         &self,
         other: &Self,
-        position1: Vector,
-        rotation1: impl Into<Rotation>,
-        position2: Vector,
-        rotation2: impl Into<Rotation>,
-        prediction_distance: Scalar,
+        position1: RVector,
+        rotation1: impl Into<Rot>,
+        position2: RVector,
+        rotation2: impl Into<Rot>,
+        prediction_distance: f32,
         manifolds: &mut Vec<ContactManifold>,
         context: ColliderPairContext<Self::Context>,
     );
@@ -262,28 +262,28 @@ pub trait AnyCollider: Component<Mutability = Mutable> + ComputeMassProperties {
     /// of any given shape to its surface.
     ///
     /// [CCD]: crate::dynamics::ccd
-    fn ccd_thickness_with_context(&self, context: ColliderContext<Self::Context>) -> Scalar {
-        let aabb = self.aabb_with_context(Vector::ZERO, Rotation::IDENTITY, context);
+    fn ccd_thickness_with_context(&self, context: ColliderContext<Self::Context>) -> f32 {
+        let aabb = self.aabb_with_context(RVector::ZERO, Rot::IDENTITY, 0.0, context);
         aabb.size().min_element() * 0.5
     }
 
     /// Returns the maximum distance from the collider to the given point.
     fn max_distance_to_point_with_context(
         &self,
-        point: Vector,
+        point: RVector,
         context: ColliderContext<Self::Context>,
-    ) -> Scalar {
-        let aabb = self.aabb_with_context(Vector::ZERO, Rotation::IDENTITY, context);
-        point.distance(aabb.center()) + aabb.size().length() * 0.5
+    ) -> f32 {
+        let aabb = self.aabb_with_context(RVector::ZERO, Rot::IDENTITY, 0.0, context);
+        point.distance(aabb.center()).f32() + aabb.size().length() * 0.5
     }
 
     /// Returns the radius of the bounding sphere of the collider.
     ///
     /// This is used to compute a size-relative [`ColliderAabbMargin`] for the collider.
-    fn bounding_radius_with_context(&self, context: ColliderContext<Self::Context>) -> Scalar {
+    fn bounding_radius_with_context(&self, context: ColliderContext<Self::Context>) -> f32 {
         // We don't have a bounding sphere method directly available here,
         // so for now we settle for this approximation for the default implementation.
-        let aabb = self.aabb_with_context(Vector::ZERO, Rotation::IDENTITY, context.clone());
+        let aabb = self.aabb_with_context(RVector::ZERO, Rot::IDENTITY, 0.0, context.clone());
         aabb.size().length() * 0.5
     }
 }
@@ -292,30 +292,32 @@ pub trait AnyCollider: Component<Mutability = Mutable> + ComputeMassProperties {
 /// implementations that don't need context
 pub trait SimpleCollider: AnyCollider<Context = ()> {
     /// Computes the [Axis-Aligned Bounding Box](ColliderAabb) of the collider
-    /// with the given position and rotation.
+    /// with the given position and rotation, grown by the given margin.
     ///
     /// See [`AnyCollider::aabb_with_context`] for collider types with a non-empty [`AnyCollider::Context`].
-    fn aabb(&self, position: Vector, rotation: impl Into<Rotation>) -> ColliderAabb {
-        self.aabb_with_context(position, rotation, ColliderContext::NO_CONTEXT)
+    fn aabb(&self, position: RVector, rotation: impl Into<Rot>, margin: f32) -> ColliderAabb {
+        self.aabb_with_context(position, rotation, margin, ColliderContext::NO_CONTEXT)
     }
 
-    /// Computes the swept [Axis-Aligned Bounding Box](ColliderAabb) of the collider.
-    /// This corresponds to the space the shape would occupy if it moved from the given
-    /// start position to the given end position.
+    /// Computes the swept [Axis-Aligned Bounding Box](ColliderAabb) of the collider,
+    /// grown by the given margin. This corresponds to the space the shape would occupy
+    /// if it moved from the given start position to the given end position.
     ///
     /// See [`AnyCollider::swept_aabb_with_context`] for collider types with a non-empty [`AnyCollider::Context`].
     fn swept_aabb(
         &self,
-        start_position: Vector,
-        start_rotation: impl Into<Rotation>,
-        end_position: Vector,
-        end_rotation: impl Into<Rotation>,
+        start_position: RVector,
+        start_rotation: impl Into<Rot>,
+        end_position: RVector,
+        end_rotation: impl Into<Rot>,
+        margin: f32,
     ) -> ColliderAabb {
         self.swept_aabb_with_context(
             start_position,
             start_rotation,
             end_position,
             end_rotation,
+            margin,
             ColliderContext::NO_CONTEXT,
         )
     }
@@ -329,11 +331,11 @@ pub trait SimpleCollider: AnyCollider<Context = ()> {
     fn contact_manifolds(
         &self,
         other: &Self,
-        position1: Vector,
-        rotation1: impl Into<Rotation>,
-        position2: Vector,
-        rotation2: impl Into<Rotation>,
-        prediction_distance: Scalar,
+        position1: RVector,
+        rotation1: impl Into<Rot>,
+        position2: RVector,
+        rotation2: impl Into<Rot>,
+        prediction_distance: f32,
         manifolds: &mut Vec<ContactManifold>,
     ) {
         self.contact_manifolds_with_context(
@@ -355,19 +357,19 @@ pub trait SimpleCollider: AnyCollider<Context = ()> {
     /// of any given shape to its surface.
     ///
     /// [CCD]: crate::dynamics::ccd
-    fn ccd_thickness(&self) -> Scalar {
+    fn ccd_thickness(&self) -> f32 {
         self.ccd_thickness_with_context(ColliderContext::NO_CONTEXT)
     }
 
     /// Returns the maximum distance from the collider to the given point.
-    fn max_distance_to_point(&self, point: Vector) -> Scalar {
+    fn max_distance_to_point(&self, point: RVector) -> f32 {
         self.max_distance_to_point_with_context(point, ColliderContext::NO_CONTEXT)
     }
 
     /// Returns the radius of the bounding sphere of the collider.
     ///
     /// This is used to compute a size-relative [`ColliderAabbMargin`] for the collider.
-    fn bounding_radius(&self) -> Scalar {
+    fn bounding_radius(&self) -> f32 {
         self.bounding_radius_with_context(ColliderContext::NO_CONTEXT)
     }
 }
@@ -484,6 +486,22 @@ pub struct Sensor;
 /// The Axis-Aligned Bounding Box of a [collider](Collider) in world space.
 ///
 /// This is updated automatically.
+///
+/// # Large Worlds
+///
+/// When the `f64` feature is enabled, the AABB still uses
+/// single-precision coordinates for BVH performance reasons,
+/// but rounds outward to ensure that it encompasses the collider.
+/// When the shape is far from the origin, its bounds may become more
+/// conservative and inflated due to the limited precision of `f32`.
+///
+/// At `1e7` units from the origin, the floating-point quantization
+/// is about one unit, while at `1e8` units from the origin, it is
+/// about sixteen units. The simulation should still behave correctly,
+/// but the effectiveness of the broad phase and its acceleration structures
+/// may be reduced, as they will report more false positives. It is recommended
+/// to remain within `1e7` to `1e8` units from the origin to not degrade
+/// broad phase performance too much.
 #[derive(Reflect, Clone, Copy, Component, Debug, PartialEq)]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serialize", reflect(Serialize, Deserialize))]
@@ -509,16 +527,19 @@ impl ColliderAabb {
     };
 
     /// Creates a new [`ColliderAabb`] from the given `center` and `half_size`.
-    pub fn new(center: Vector, half_size: Vector) -> Self {
+    pub fn new(center: RVector, half_size: Vector) -> Self {
         Self {
-            min: center - half_size,
-            max: center + half_size,
+            min: next_down_vector(center - half_size.real()),
+            max: next_up_vector(center + half_size.real()),
         }
     }
 
     /// Creates a new [`ColliderAabb`] from its minimum and maximum points.
-    pub fn from_min_max(min: Vector, max: Vector) -> Self {
-        Self { min, max }
+    pub fn from_min_max(min: RVector, max: RVector) -> Self {
+        Self {
+            min: next_down_vector(min),
+            max: next_up_vector(max),
+        }
     }
 
     /// Creates a new [`ColliderAabb`] from a given `SharedShape`.
@@ -529,15 +550,15 @@ impl ColliderAabb {
     pub fn from_shape(shape: &crate::parry::shape::SharedShape) -> Self {
         let aabb = shape.compute_local_aabb();
         Self {
-            min: aabb.mins,
-            max: aabb.maxs,
+            min: next_down_vector(aabb.mins),
+            max: next_up_vector(aabb.maxs),
         }
     }
 
     /// Computes the center of the AABB,
     #[inline(always)]
-    pub fn center(self) -> Vector {
-        self.min.midpoint(self.max)
+    pub fn center(self) -> RVector {
+        self.min.real().midpoint(self.max.real())
     }
 
     /// Computes the size of the AABB.
@@ -613,13 +634,13 @@ impl From<ColliderAabb> for obvhs::aabb::Aabb {
     fn from(value: ColliderAabb) -> Self {
         Self {
             #[cfg(feature = "2d")]
-            min: value.min.f32().extend(-0.5).to_array().into(),
+            min: value.min.extend(-0.5).to_array().into(),
             #[cfg(feature = "2d")]
-            max: value.max.f32().extend(0.5).to_array().into(),
+            max: value.max.extend(0.5).to_array().into(),
             #[cfg(feature = "3d")]
-            min: value.min.f32().to_array().into(),
+            min: value.min.to_array().into(),
             #[cfg(feature = "3d")]
-            max: value.max.f32().to_array().into(),
+            max: value.max.to_array().into(),
         }
     }
 }
@@ -649,7 +670,7 @@ impl EnlargedAabb {
     /// If the AABB is already contained within the enlarged AABB, nothing happens.
     ///
     /// Returns `true` if the AABB was updated.
-    pub fn update(&mut self, aabb: &ColliderAabb, margin: Scalar) -> bool {
+    pub fn update(&mut self, aabb: &ColliderAabb, margin: f32) -> bool {
         if self.contains(aabb) {
             return false;
         }
@@ -682,7 +703,7 @@ impl EnlargedAabb {
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serialize", reflect(Serialize, Deserialize))]
 #[reflect(Debug, Component, Default, PartialEq)]
-pub struct ColliderAabbMargin(pub Scalar);
+pub struct ColliderAabbMargin(pub f32);
 
 impl ColliderAabbMargin {
     /// The maximum AABB margin before being scaled by the [`PhysicsLengthUnit`].
@@ -691,10 +712,10 @@ impl ColliderAabbMargin {
     /// to move by a small amount without triggering a tree adjustment.
     ///
     /// [`PhysicsLengthUnit`]: crate::dynamics::solver::PhysicsLengthUnit
-    pub const MAX: Scalar = 0.05;
+    pub const MAX: f32 = 0.05;
 
     /// For small shapes, the margin is limited to this fraction of the shape's bounding radius.
-    pub const FRACTION: Scalar = 0.125;
+    pub const FRACTION: f32 = 0.125;
 
     /// Computes the AABB margin for a collider with the given `bounding_radius` and [`PhysicsLengthUnit`].
     ///
@@ -703,7 +724,7 @@ impl ColliderAabbMargin {
     ///
     /// [`PhysicsLengthUnit`]: crate::dynamics::solver::PhysicsLengthUnit
     #[inline]
-    pub fn from_bounding_radius(bounding_radius: Scalar, length_unit: Scalar) -> Self {
+    pub fn from_bounding_radius(bounding_radius: f32, length_unit: f32) -> Self {
         Self((length_unit * Self::MAX).min(Self::FRACTION * bounding_radius))
     }
 }
@@ -767,7 +788,7 @@ impl ColliderAabbMargin {
 #[cfg_attr(feature = "serialize", reflect(Serialize, Deserialize))]
 #[reflect(Component)]
 #[doc(alias = "ContactSkin")]
-pub struct CollisionMargin(pub Scalar);
+pub struct CollisionMargin(pub f32);
 
 /// A component for reading which entities are colliding with a collider entity.
 /// Must be added manually for desired colliders.
